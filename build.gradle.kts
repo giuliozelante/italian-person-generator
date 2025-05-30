@@ -58,10 +58,14 @@ graalvmNative {
             buildArgs.add("--initialize-at-run-time=io.netty")
             buildArgs.add("--initialize-at-run-time=io.netty.util.internal.shaded.org.jctools")
             
+            // More specific Netty initialization
+            buildArgs.add("--initialize-at-build-time=io.netty.util.internal.logging")
+            buildArgs.add("--initialize-at-run-time=io.netty.buffer.ByteBufAllocator")
+            buildArgs.add("--initialize-at-run-time=io.netty.buffer.ByteBufUtil")
+            buildArgs.add("--initialize-at-run-time=io.netty.buffer.PooledByteBufAllocator")
+            
             // JNI and reflection configuration for Netty
             buildArgs.add("--enable-url-protocols=http,https")
-            buildArgs.add("-H:+AllowVMInspection")
-            buildArgs.add("--enable-all-security-services")
             
             // Optimize for size and startup time
             buildArgs.add("-Ob")
