@@ -7,10 +7,10 @@ plugins {
     id("io.micronaut.aot") version "4.5.3"
 }
 
-version = "1.0.0"
+version = "0.1"
 group = "it.gzelante.italianperson"
 
-val kotlinVersion = project.properties.get("kotlinVersion")
+val kotlinVersion=project.properties.get("kotlinVersion")
 repositories {
     mavenCentral()
 }
@@ -28,13 +28,14 @@ dependencies {
     testImplementation("io.micronaut:micronaut-http-client")
 }
 
+
 application {
     mainClass = "it.gzelante.italianperson.ApplicationKt"
 }
-
 java {
     sourceCompatibility = JavaVersion.toVersion("21")
 }
+
 
 graalvmNative.toolchainDetection = false
 
@@ -55,25 +56,13 @@ micronaut {
         optimizeClassLoading = true
         deduceEnvironment = true
         optimizeNetty = true
-        replaceLogbackXml = false
+        replaceLogbackXml = true
     }
 }
+
 
 tasks.named<io.micronaut.gradle.docker.NativeImageDockerfile>("dockerfileNative") {
     jdkVersion = "21"
 }
 
-kotlin {
-    jvmToolchain(21)
-}
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "21"
-        javaParameters = true
-    }
-}
-
-allOpen {
-    annotation("io.micronaut.aop.Around")
-}

@@ -93,3 +93,11 @@ hs_err_pid*
 # Application specific
 application.log
 application-*.log
+
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.lzma
+*.tar.lzma
