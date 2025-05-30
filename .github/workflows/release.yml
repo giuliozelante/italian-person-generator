@@ -1,0 +1,199 @@
+name: Build and Release Native Executables
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -Dorg.gradle.daemon=false -Dkotlin.compiler.execution.strategy=in-process"
+
+jobs:
+  build-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            extension: ""
+            graalvm_url: "https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_linux-x64_bin.tar.gz"
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            extension: ".exe"
+            graalvm_url: "https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_windows-x64_bin.zip"
+          - os: macos-latest
+            platform: macos
+            arch: x64
+            extension: ""
+            graalvm_url: "https://download.oracle.com/graalvm/21/latest/graalvm-jdk-21_macos-x64_bin.tar.gz"
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup GraalVM (Linux/macOS)
+      if: runner.os != 'Windows'
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '21'
+        distribution: 'graalvm'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Setup GraalVM (Windows)
+      if: runner.os == 'Windows'
+      uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '21'
+        distribution: 'graalvm'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Install native-image component
+      run: gu install native-image
+      
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Make gradlew executable (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: chmod +x ./gradlew
+      
+    - name: Run tests
+      run: ./gradlew test
+      
+    - name: Build native executable
+      run: ./gradlew nativeCompile
+      
+    - name: Verify executable (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        ls -la build/native/nativeCompile/
+        file build/native/nativeCompile/italian-person-generator
+        
+    - name: Verify executable (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        dir build\native\nativeCompile\
+        
+    - name: Rename executable
+      shell: bash
+      run: |
+        cd build/native/nativeCompile/
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          mv italian-person-generator.exe italian-person-generator-${{ matrix.platform }}-${{ matrix.arch }}.exe
+        else
+          mv italian-person-generator italian-person-generator-${{ matrix.platform }}-${{ matrix.arch }}
+        fi
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: italian-person-generator-${{ matrix.platform }}-${{ matrix.arch }}
+        path: build/native/nativeCompile/italian-person-generator-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.extension }}
+        retention-days: 30
+
+  create-release:
+    needs: build-native
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Display structure of downloaded files
+      run: ls -la artifacts/
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        body: |
+          ## Italian Person Generator ${{ github.ref_name }}
+          
+          REST API service for generating realistic Italian person data including:
+          - Full names (male/female)
+          - Authentic Italian addresses with provinces
+          - Valid CAP postal codes
+          - Calculated fiscal codes (Codice Fiscale)
+          - Mobile phone numbers
+          - ID card numbers (CIE format)
+          - Consistent birth dates and issue dates
+          
+          ### 🚀 Quick Start
+          Download the executable for your platform and run:
+          ```bash
+          ./italian-person-generator-[platform]-x64
+          ```
+          
+          ### 📡 API Endpoints
+          - `GET /health` - Service health check
+          - `GET /api/v1/person` - Generate single person
+          - `GET /api/v1/persons?count=N` - Generate multiple persons (max 100)
+          
+          The service starts on port 8080 by default (configurable via PORT environment variable).
+          
+          ### 🏗️ Technical Details
+          - Built with Kotlin + Ktor
+          - Native compilation with GraalVM
+          - Fast startup (~80ms)
+          - Small binary size (~14MB)
+          - Zero external dependencies at runtime
+          
+          **Platforms supported:** Windows x64, Linux x64, macOS x64
+        draft: false
+        prerelease: false
+        
+    - name: Upload Windows executable
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/italian-person-generator-windows-x64/italian-person-generator-windows-x64.exe
+        asset_name: italian-person-generator-windows-x64.exe
+        asset_content_type: application/octet-stream
+        
+    - name: Upload Linux executable
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/italian-person-generator-linux-x64/italian-person-generator-linux-x64
+        asset_name: italian-person-generator-linux-x64
+        asset_content_type: application/octet-stream
+        
+    - name: Upload macOS executable
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./artifacts/italian-person-generator-macos-x64/italian-person-generator-macos-x64
+        asset_name: italian-person-generator-macos-x64
+        asset_content_type: application/octet-stream 
