@@ -32,6 +32,20 @@ data class HealthResponse(
     val version: String
 )
 
+@Serializable
+data class ApiEndpoint(
+    val health: String,
+    val single_person: String,
+    val multiple_persons: String
+)
+
+@Serializable
+data class ApiInfoResponse(
+    val service: String,
+    val version: String,
+    val endpoints: ApiEndpoint
+)
+
 class App {
     private val generator = ItalianPersonGenerator()
     
@@ -74,13 +88,13 @@ class App {
             
             // Root endpoint with API info
             get("/") {
-                call.respond(mapOf(
-                    "service" to "Italian Person Generator API",
-                    "version" to "1.0.0",
-                    "endpoints" to mapOf(
-                        "health" to "GET /health",
-                        "single_person" to "GET /api/v1/person",
-                        "multiple_persons" to "GET /api/v1/persons?count=N (max 100)"
+                call.respond(ApiInfoResponse(
+                    service = "Italian Person Generator API",
+                    version = "1.0.0",
+                    endpoints = ApiEndpoint(
+                        health = "GET /health",
+                        single_person = "GET /api/v1/person",
+                        multiple_persons = "GET /api/v1/persons?count=N (max 100)"
                     )
                 ))
             }
