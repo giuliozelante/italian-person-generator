@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "1.9.22"
     kotlin("plugin.serialization") version "1.9.22"
     id("org.graalvm.buildtools.native") version "0.9.28"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
     application
 }
 
@@ -114,4 +115,22 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
             "-opt-in=kotlin.RequiresOptIn"
         )
     }
+}
+
+// Shadow JAR configuration for standalone distribution
+tasks.shadowJar {
+    archiveBaseName.set("italian-person-generator")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+    
+    manifest {
+        attributes(
+            "Main-Class" to "it.gzelante.italianperson.AppKt"
+        )
+    }
+}
+
+// Make build depend on shadowJar
+tasks.build {
+    dependsOn(tasks.shadowJar)
 }

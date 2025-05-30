@@ -17,8 +17,9 @@ A fast, lightweight REST API service for generating realistic Italian person dat
 Download the latest release for your platform from the [GitHub Releases](../../releases) page:
 
 - **Windows**: `italian-person-generator-windows-x64.exe`
-- **Linux**: `italian-person-generator-linux-x64`  
+- **Linux**: `italian-person-generator-linux-x64`
 - **macOS**: `italian-person-generator-macos-x64`
+- **Universal JAR**: `italian-person-generator.jar` (requires Java 21+)
 
 ### Run the Service
 
@@ -153,6 +154,29 @@ cd italian-person-generator
 
 # Clean build
 ./gradlew clean
+```
+
+### Building from Source
+
+**Prerequisites**: Java 21+ installed
+
+```bash
+# Clone the repository
+git clone https://github.com/giuliozelante/italian-person-generator.git
+cd italian-person-generator
+
+# Build fat JAR (recommended)
+./gradlew shadowJar
+
+# Run the JAR
+java -jar build/libs/italian-person-generator.jar
+
+# Or run directly with Gradle
+./gradlew run
+
+# Build native executable (requires GraalVM)
+./gradlew nativeCompile
+build/native/nativeCompile/italian-person-generator
 ```
 
 ## 🌍 Multi-Platform CI/CD
